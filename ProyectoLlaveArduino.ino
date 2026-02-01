@@ -24,21 +24,21 @@ class ServerCallbacks : public BLEServerCallbacks {
   }
 };
 
-
-class RecibirMensajeBLE : public BLECharacteristicCallbacks {
-  void onWrite(BLECharacteristic *pCharacteristic) {
-    mensajeRecibido = pCharacteristic->getValue();
-    Serial.println(mensajeRecibido);
-  }
-};
-
-
 void EnviarMensajeBLE(String mensaje) {
     txCharacteristic->setValue(mensaje);
     txCharacteristic->notify();
     Serial.print("📤 Mensaje enviado: ");
     Serial.println(mensaje);
 }
+
+class RecibirMensajeBLE : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *pCharacteristic) {
+    mensajeRecibido = pCharacteristic->getValue();
+    Serial.println(mensajeRecibido);
+    EnviarMensajeBLE("Respuesta circuito");
+  }
+};
+
 
 void setup() {
   Serial.begin(115200);
