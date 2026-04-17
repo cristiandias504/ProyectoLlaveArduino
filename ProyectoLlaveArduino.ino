@@ -90,9 +90,6 @@ void dormir() {
       }
     }
 
-    // digitalWrite(ledEstado, HIGH);
-    // delay(300);
-    // digitalWrite(ledEstado, LOW);
 
     if (bootNum >= 60000) {
       ESP.restart();
@@ -129,22 +126,10 @@ void print_wakeup_reason() {
 
   switch (wakeup_reason) {
     case ESP_SLEEP_WAKEUP_TIMER:
-      //Serial.println("desperto por tiempo");
-      // int ledEstado = 25;
-      // pinMode(ledEstado, OUTPUT);
-      // digitalWrite(ledEstado, HIGH);
-      // delay(300);
-      // digitalWrite(ledEstado, LOW);
-
-      // if (bootNum >= 60000) {
-      //   ESP.restart();
-      // }
-
       esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
       despierto = false;
       dormir();
       break;
-      //default : Serial.printf("Wakeup was not caused by deep sleep: %d\n", wakeup_reason); break;
   }
 }
 
