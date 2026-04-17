@@ -57,13 +57,46 @@ void dormir() {
     bootNum++;  //INCREMENTA CADA VEZ QUE SE DESPIERTA
     Serial.println("numero de boot: " + String(bootNum));
 
+    float voltajeInterno = medirVoltaje(13);
+
     Serial.print("Voltaje de la motocicleta: ");
     Serial.print(medirVoltaje(34));
     Serial.println(" Voltios");
 
     Serial.print("Voltaje de la Bateria interna: ");
-    Serial.print(medirVoltaje(13));
+    Serial.print(voltajeInterno);
     Serial.println(" Voltios");
+
+    int ledEstado = 25;
+    pinMode(ledEstado, OUTPUT);
+
+    if (voltajeInterno > 4.10) {
+      digitalWrite(ledEstado, HIGH);
+      delay(300);
+      digitalWrite(ledEstado, LOW);
+    } else if (voltajeInterno > 3.80) {
+      for (int i = 0; i < 2; i++) {
+        digitalWrite(ledEstado, HIGH);
+        delay(200);
+        digitalWrite(ledEstado, LOW);
+        delay(200);
+      }
+    } else {
+      for (int i = 0; i < 3; i++) {
+        digitalWrite(ledEstado, HIGH);
+        delay(150);
+        digitalWrite(ledEstado, LOW);
+        delay(150);
+      }
+    }
+
+    // digitalWrite(ledEstado, HIGH);
+    // delay(300);
+    // digitalWrite(ledEstado, LOW);
+
+    if (bootNum >= 60000) {
+      ESP.restart();
+    }
 
     // if (bootNum == varRegistro + 113 ) {
     //   varRegistro = varRegistro + 113;
@@ -97,15 +130,15 @@ void print_wakeup_reason() {
   switch (wakeup_reason) {
     case ESP_SLEEP_WAKEUP_TIMER:
       //Serial.println("desperto por tiempo");
-      int led_rojo = 25;
-      pinMode(led_rojo, OUTPUT);
-      digitalWrite(led_rojo, HIGH);
-      delay(300);
-      digitalWrite(led_rojo, LOW);
+      // int ledEstado = 25;
+      // pinMode(ledEstado, OUTPUT);
+      // digitalWrite(ledEstado, HIGH);
+      // delay(300);
+      // digitalWrite(ledEstado, LOW);
 
-      if (bootNum >= 60000) {
-        ESP.restart();
-      }
+      // if (bootNum >= 60000) {
+      //   ESP.restart();
+      // }
 
       esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
       despierto = false;
@@ -120,7 +153,7 @@ TaskHandle_t comunicacion;
 int principal = 27;  //PIN GPIO PARA EL CONTROL DEL ENCENDIDO COMPLETO DE LA MOTOCICLETA
 int sirena = 4;
 int direccion = 32;  //PIN GPIO PARA LA ACTIVACION DE LAS DIRECCIONALES
-int led_rojo = 25;   //PIN GPIO PARA EL CONTROL DE LA LLAVE ROJA DEL TABLERO
+int ledEstado = 25;   //PIN GPIO PARA EL CONTROL DE LA LLAVE ROJA DEL TABLERO
 int lm2596 = 26;
 
 BLECharacteristic *txCharacteristic;
@@ -233,13 +266,13 @@ void setup() {
 
   pinMode(principal, OUTPUT);
   pinMode(direccion, OUTPUT);
-  pinMode(led_rojo, OUTPUT);
+  pinMode(ledEstado, OUTPUT);
   pinMode(lm2596, OUTPUT);
   pinMode(sirena, OUTPUT);
   pinMode(15, INPUT);  //SEÑAL DE ARRANQUE
   digitalWrite(principal, LOW);
   digitalWrite(direccion, LOW);
-  digitalWrite(led_rojo, LOW);
+  digitalWrite(ledEstado, LOW);
   digitalWrite(lm2596, LOW);
   digitalWrite(sirena, LOW);
 
@@ -312,10 +345,10 @@ void loop() {
   if (procesoParpadeo == true){
     if (millis() >= T_Led + 150) {
       if (estadoled == false) {
-        digitalWrite(led_rojo, HIGH);
+        digitalWrite(ledEstado, HIGH);
         estadoled = true;
       } else {
-        digitalWrite(led_rojo, LOW);
+        digitalWrite(ledEstado, LOW);
         estadoled = false;
       }
       T_Led = millis();
@@ -327,7 +360,7 @@ void loop() {
       Serial.println("Activando Sistema");
       T = millis();
       procesoParpadeo = false;
-      digitalWrite(led_rojo, LOW);
+      digitalWrite(ledEstado, LOW);
       digitalWrite(lm2596, HIGH);
       digitalWrite(principal, HIGH);
       digitalWrite(sirena, HIGH);
@@ -364,7 +397,7 @@ void loop() {
     
     if (millis() >= T + 2000) {
       Serial.println("Encendiendo led");
-      digitalWrite(led_rojo, HIGH);
+      digitalWrite(ledEstado, HIGH);
       procesoEncender = false;
       ciclosdireccion = 0;
       ciclossirena = 0;
@@ -380,9 +413,9 @@ void loop() {
       for (int i = 0; i < 40; i++) {
         if (i == 20)
           digitalWrite(sirena, HIGH);
-        digitalWrite(led_rojo, HIGH);
+        digitalWrite(ledEstado, HIGH);
         delay(250);
-        digitalWrite(led_rojo, LOW);
+        digitalWrite(ledEstado, LOW);
         delay(250);
       }
       digitalWrite(sirena, LOW);
@@ -568,13 +601,13 @@ void procesoApagado(int tipo) {
     while (contadorApagado < 3) {
       if (millis() >= T_LedApagdo + 200) {
         if (estadoledApagado == false) {
-          digitalWrite(led_rojo, HIGH);
+          digitalWrite(ledEstado, HIGH);
           digitalWrite(direccion, HIGH);
           if (contadorApagado < 2)
             digitalWrite(sirena, HIGH);
           estadoledApagado = true;
         } else {
-          digitalWrite(led_rojo, LOW);
+          digitalWrite(ledEstado, LOW);
           digitalWrite(direccion, LOW);
           digitalWrite(sirena, LOW);
           estadoledApagado = false;
@@ -593,13 +626,13 @@ void procesoApagado(int tipo) {
     while (contadorApagado < 2) {
       if (millis() >= T_LedApagdo + 200) {
         if (estadoledApagado == false) {
-          digitalWrite(led_rojo, HIGH);
+          digitalWrite(ledEstado, HIGH);
           digitalWrite(direccion, HIGH);
           if (contadorApagado < 1)
             digitalWrite(sirena, HIGH);
           estadoledApagado = true;
         } else {
-          digitalWrite(led_rojo, LOW);
+          digitalWrite(ledEstado, LOW);
           digitalWrite(direccion, LOW);
           digitalWrite(sirena, LOW);
           estadoledApagado = false;
