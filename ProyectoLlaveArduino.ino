@@ -3,23 +3,84 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
+#include <Preferences.h>
+
 //PIN GPIO15: SEÑAL DE ENCENDIDO (ON/OFF) "PIN TDO"
 
 RTC_DATA_ATTR int bootNum = 0;            //VARIABLE PARA LLEVAR EL CONTEO DE LOS BOOT´S HECHOS
 RTC_DATA_ATTR boolean despierto = false;  //VARIABLE PARA EVITAR QUE EL SISTEMA SE DUERMA DE MANERA INFINITA
 
+RTC_DATA_ATTR int varRegistro = 0;
+
 #define uS_TO_S_FACTOR 1000000ULL
 #define TIME_TO_SLEEP 5 // segundos
+
+Preferences preferences;
 
 #define SERVICE_UUID        "12345678-1234-1234-1234-1234567890ab"
 #define CHARACTERISTIC_RX  "12345678-1234-1234-1234-1234567890ac"
 #define CHARACTERISTIC_TX  "12345678-1234-1234-1234-1234567890ad"
 
 
+float medirVoltaje(int pin) {
+  long suma = 0;
+  int muestras = 10;
+  float Vref = 3.3;
+  float R1 = 10000; //R15 de la placa, 12V
+  float R2 = 1830; //R16 de la placa, 12V
+  float R3 = 4800; //R23 de la placa, 3,7V
+  float R4 = 4350; //R24 de la placa, 3,7V
+
+  for (int i = 0; i < muestras; i++) {
+    suma += analogRead(pin);
+    delay(2);
+  }
+
+  float lectura = suma / (float)muestras;
+
+  if (pin == 34) {
+    float voltajePin = (lectura / 4095.0) * Vref;
+    float voltajeReal = voltajePin * ((R1 + R2) / R2);
+
+    return voltajeReal;
+  } else if (pin == 13) {
+    float voltajePin = (lectura / 4095.0) * Vref;
+    float voltajeReal = voltajePin * ((R3 + R4) / R4);
+
+    return voltajeReal;
+  } else return 0.00;
+}
+
+
 void dormir() {
   if (despierto == false) {
     bootNum++;  //INCREMENTA CADA VEZ QUE SE DESPIERTA
     Serial.println("numero de boot: " + String(bootNum));
+
+    Serial.print("Voltaje de la motocicleta: ");
+    Serial.print(medirVoltaje(34));
+    Serial.println(" Voltios");
+
+    Serial.print("Voltaje de la Bateria interna: ");
+    Serial.print(medirVoltaje(13));
+    Serial.println(" Voltios");
+
+    // if (bootNum == varRegistro + 113 ) {
+    //   varRegistro = varRegistro + 113;
+
+    //   preferences.begin("Contador", false);
+    //   int contador = preferences.getInt("contador", 0); // leer
+    //   contador++;
+    //   //contador = 0;
+    //   preferences.putInt("contador", contador); // guardar
+
+    //   Serial.print("Valor de contador guardado: ");
+    //   Serial.println(contador);
+
+    //   preferences.end();
+    // }
+
+
     esp_sleep_enable_ext0_wakeup(GPIO_NUM_15, 1);  //DETERMINA EL PIN GPIO RTC QUE DESPERTARA EL SISTEMA, 1 = High, 0 = Low
     Serial.println("..........Modo Deep Sleep..........");
     Serial.flush();
@@ -152,6 +213,15 @@ void EnviarMensajeBLE(String mensaje) {
 
 void setup() {
   Serial.begin(115200);
+
+  // preferences.begin("Contador", false);
+  // int contador = preferences.getInt("contador", 0); // leer
+  // Serial.print("Ultimo registro del contador: ");
+  // Serial.println(contador);
+
+  analogReadResolution(12); // 0 - 4095
+  analogSetPinAttenuation(34, ADC_11db); // GPIO34
+  analogSetPinAttenuation(13, ADC_11db); // GPIO13
 
   print_wakeup_reason();
   esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
