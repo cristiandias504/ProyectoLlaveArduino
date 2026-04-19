@@ -21,6 +21,8 @@ Preferences preferences;
 #define CHARACTERISTIC_RX  "12345678-1234-1234-1234-1234567890ac"
 #define CHARACTERISTIC_TX  "12345678-1234-1234-1234-1234567890ad"
 
+unsigned long T_cargaAuxiliar = 0;
+
 
 float medirVoltaje(int pin) {
   long suma = 0;
@@ -52,15 +54,45 @@ float medirVoltaje(int pin) {
 }
 
 
+void cargaAuxiliar() {
+  pinMode(26, OUTPUT);
+  digitalWrite(26, HIGH);
+  Serial.println("Iniciando proceso de carga auxiliar de la bateria interna");
+  T_cargaAuxiliar = millis();
+  while (1) {
+    if (millis() >= T_cargaAuxiliar + 60000) {
+      T_cargaAuxiliar = millis();
+      digitalWrite(26, LOW);
+      delay(500);
+      float voltajeInterno = medirVoltaje(13);
+      float voltajeMotocicleta = medirVoltaje(34);
+      digitalWrite(26, HIGH);
+      Serial.print("Voltaje Actual: ");
+      Serial.println(voltajeInterno);
+      if (voltajeMotocicleta < 12.40) {
+        Serial.println("Voltaje de la motocicleta demasiado bajo para continuar con la carga auxiliar");
+        break;
+      } else if (voltajeInterno >= 4.00) {
+        Serial.println("Bateria Cargada");
+        break;
+      } else Serial.println("Continua Cargando...");
+    }
+    delay (10);
+  }
+  Serial.println("Finalizando proceso de carga auxiliar de la bateria interna");
+}
+
+
 void dormir() {
   if (despierto == false) {
     bootNum++;  //INCREMENTA CADA VEZ QUE SE DESPIERTA
     Serial.println("numero de boot: " + String(bootNum));
 
     float voltajeInterno = medirVoltaje(13);
+    float voltajeMotocicleta = medirVoltaje(34);
 
     Serial.print("Voltaje de la motocicleta: ");
-    Serial.print(medirVoltaje(34));
+    Serial.print(voltajeMotocicleta);
     Serial.println(" Voltios");
 
     Serial.print("Voltaje de la Bateria interna: ");
@@ -74,20 +106,24 @@ void dormir() {
       digitalWrite(ledEstado, HIGH);
       delay(300);
       digitalWrite(ledEstado, LOW);
-    } else if (voltajeInterno > 3.80) {
+    } else if (voltajeInterno > 3.90) {
       for (int i = 0; i < 2; i++) {
         digitalWrite(ledEstado, HIGH);
         delay(200);
         digitalWrite(ledEstado, LOW);
         delay(200);
       }
-    } else {
+    } else if (voltajeInterno > 3.70) {
       for (int i = 0; i < 3; i++) {
         digitalWrite(ledEstado, HIGH);
         delay(150);
         digitalWrite(ledEstado, LOW);
         delay(150);
       }
+    } else {
+      if (voltajeMotocicleta >= 12.40) {
+        cargaAuxiliar();
+      } else Serial.println("Voltaje de la motocicleta demasiado bajo para carga auxiliar");
     }
 
 
