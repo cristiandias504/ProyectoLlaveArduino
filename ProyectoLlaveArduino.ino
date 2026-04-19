@@ -351,7 +351,7 @@ unsigned long T_Sirena = 0;
 unsigned long T_Alarma = 0;
 
 bool estadoled = false;
-bool estadodireccion = true;
+bool estadodireccion = false;
 bool estadosirena = true;
 
 int ciclosdireccion = 0;
@@ -385,10 +385,9 @@ void loop() {
       digitalWrite(lm2596, HIGH);
       digitalWrite(principal, HIGH);
       digitalWrite(sirena, HIGH);
-      digitalWrite(direccion, HIGH);
     }
 
-    if (ciclosdireccion <= 3) {
+    if (ciclosdireccion < 3) {
       if (millis() >= T + T_Direccion) {
         if (estadodireccion == true) {
           digitalWrite(direccion, LOW);
