@@ -354,13 +354,22 @@ bool estadoled = false;
 bool estadodireccionales = false;
 bool estadosirena = true;
 
+int ciclosapagado = 0;
 int ciclosdireccionales = 0;
 int ciclossirena = 0;
 
 void loop() {
   //if (analogRead(15) < 400) {
-  if (digitalRead(15) == LOW) {
-    procesoApagado(1);
+  // if (digitalRead(15) == LOW) {
+  //   procesoApagado(1);
+  // }
+  if (digitalRead(15) == LOW){
+    ciclosapagado ++;
+    if (ciclosapagado >= 30){
+      procesoApagado(1);
+    }
+  } else {
+    ciclosapagado = 0;
   }
 
   if (procesoParpadeo == true){
