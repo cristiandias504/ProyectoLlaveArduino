@@ -172,8 +172,8 @@ void print_wakeup_reason() {
 TaskHandle_t comunicacion;
 
 int principal = 27;  //PIN GPIO PARA EL CONTROL DEL ENCENDIDO COMPLETO DE LA MOTOCICLETA
-int sirena = 4;
-int direccion = 32;  //PIN GPIO PARA LA ACTIVACION DE LAS DIRECCIONALES
+int sirena = 35; //4;
+int direccionales = 32;  //PIN GPIO PARA LA ACTIVACION DE LAS DIRECCIONALES
 int ledEstado = 25;   //PIN GPIO PARA EL CONTROL DE LA LLAVE ROJA DEL TABLERO
 int lm2596 = 26;
 
@@ -286,13 +286,13 @@ void setup() {
   Serial.println("CONTROL DE ENCENDIDO KTM 390");
 
   pinMode(principal, OUTPUT);
-  pinMode(direccion, OUTPUT);
+  pinMode(direccionales, OUTPUT);
   pinMode(ledEstado, OUTPUT);
   pinMode(lm2596, OUTPUT);
   pinMode(sirena, OUTPUT);
   pinMode(15, INPUT);  //SEÑAL DE ARRANQUE
   digitalWrite(principal, LOW);
-  digitalWrite(direccion, LOW);
+  digitalWrite(direccionales, LOW);
   digitalWrite(ledEstado, LOW);
   digitalWrite(lm2596, LOW);
   digitalWrite(sirena, LOW);
@@ -346,15 +346,15 @@ void IniciarBLE() {
 
 unsigned long T = 0;
 unsigned long T_Led = 0;
-unsigned long T_Direccion = 0;
+unsigned long T_direccionales = 0;
 unsigned long T_Sirena = 0;
 unsigned long T_Alarma = 0;
 
 bool estadoled = false;
-bool estadodireccion = false;
+bool estadodireccionales = false;
 bool estadosirena = true;
 
-int ciclosdireccion = 0;
+int ciclosdireccionales = 0;
 int ciclossirena = 0;
 
 void loop() {
@@ -387,17 +387,17 @@ void loop() {
       digitalWrite(sirena, HIGH);
     }
 
-    if (ciclosdireccion < 3) {
-      if (millis() >= T + T_Direccion) {
-        if (estadodireccion == true) {
-          digitalWrite(direccion, LOW);
-          estadodireccion = false;
-          ciclosdireccion += 1;
+    if (ciclosdireccionales < 3) {
+      if (millis() >= T + T_direccionales) {
+        if (estadodireccionales == true) {
+          digitalWrite(direccionales, LOW);
+          estadodireccionales = false;
+          ciclosdireccionales += 1;
         } else {
-          digitalWrite(direccion, HIGH);
-          estadodireccion = true;
+          digitalWrite(direccionales, HIGH);
+          estadodireccionales = true;
         }
-        T_Direccion += 300;
+        T_direccionales += 300;
       }
     }
 
@@ -419,11 +419,19 @@ void loop() {
       Serial.println("Encendiendo led");
       digitalWrite(ledEstado, HIGH);
       procesoEncender = false;
-      ciclosdireccion = 0;
+      ciclosdireccionales = 0;
       ciclossirena = 0;
-      T_Direccion = 0;
+      T_direccionales = 0;
       T_Sirena = 0;
       T = 0;
+    }
+
+    if (conexionValida == true) {
+      if (medirVoltaje(34) >= 13.80) {
+        digitalWrite(ledEstado, LOW);
+      } else {
+        digitalWrite(ledEstado, HIGH);
+      }
     }
   }
 
@@ -622,13 +630,13 @@ void procesoApagado(int tipo) {
       if (millis() >= T_LedApagdo + 200) {
         if (estadoledApagado == false) {
           digitalWrite(ledEstado, HIGH);
-          digitalWrite(direccion, HIGH);
+          digitalWrite(direccionales, HIGH);
           if (contadorApagado < 2)
             digitalWrite(sirena, HIGH);
           estadoledApagado = true;
         } else {
           digitalWrite(ledEstado, LOW);
-          digitalWrite(direccion, LOW);
+          digitalWrite(direccionales, LOW);
           digitalWrite(sirena, LOW);
           estadoledApagado = false;
           contadorApagado += 1;
@@ -647,13 +655,13 @@ void procesoApagado(int tipo) {
       if (millis() >= T_LedApagdo + 200) {
         if (estadoledApagado == false) {
           digitalWrite(ledEstado, HIGH);
-          digitalWrite(direccion, HIGH);
+          digitalWrite(direccionales, HIGH);
           if (contadorApagado < 1)
             digitalWrite(sirena, HIGH);
           estadoledApagado = true;
         } else {
           digitalWrite(ledEstado, LOW);
-          digitalWrite(direccion, LOW);
+          digitalWrite(direccionales, LOW);
           digitalWrite(sirena, LOW);
           estadoledApagado = false;
           contadorApagado += 1;
