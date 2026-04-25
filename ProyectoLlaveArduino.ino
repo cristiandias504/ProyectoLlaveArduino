@@ -319,6 +319,40 @@ void setup() {
     0,
     &comunicacion,
     0);
+
+  
+  if (digitalRead(15) == LOW){
+    int verificacion = 0;
+    bool codigo[] = { false, true, true, false, true };
+
+    Serial.println("Verificación de arranque sin aplicación");
+
+    for (int i = 0; i < 5; i++) {
+      digitalWrite(ledEstado, HIGH);
+      delay(100);
+      digitalWrite(ledEstado, LOW);
+      delay(100);
+    }
+
+    for(int i = 0; i < 5; i++) {
+      delay(1000);
+      digitalWrite(ledEstado, HIGH);
+      delay(1000);
+      if (digitalRead(15) == codigo[i]) {
+        verificacion ++;
+      } else {
+        Serial.println("Verificacion Fallida");
+        break;
+      }
+      digitalWrite(ledEstado, LOW);
+    }
+
+    if (verificacion == 5) {
+      Serial.println("Verificación Valida, encendiendo sistema");
+      conexionValida = true;
+      procesoEncender = true;
+    }
+  }
 }
 
 
