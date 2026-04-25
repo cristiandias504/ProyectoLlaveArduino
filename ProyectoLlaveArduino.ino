@@ -69,7 +69,7 @@ void cargaAuxiliar() {
       digitalWrite(26, HIGH);
       Serial.print("Voltaje Actual: ");
       Serial.println(voltajeInterno);
-      if (voltajeMotocicleta < 12.40) {
+      if (voltajeMotocicleta < 12.50) {
         Serial.println("Voltaje de la motocicleta demasiado bajo para continuar con la carga auxiliar");
         break;
       } else if (voltajeInterno >= 4.00) {
@@ -102,7 +102,7 @@ void dormir() {
     int ledEstado = 25;
     pinMode(ledEstado, OUTPUT);
 
-    if (voltajeInterno > 4.10) {
+    if (voltajeInterno > 4.05) {
       digitalWrite(ledEstado, HIGH);
       delay(300);
       digitalWrite(ledEstado, LOW);
@@ -172,7 +172,7 @@ void print_wakeup_reason() {
 TaskHandle_t comunicacion;
 
 int principal = 27;  //PIN GPIO PARA EL CONTROL DEL ENCENDIDO COMPLETO DE LA MOTOCICLETA
-int sirena = 35; //4;
+int sirena = 4; // 4 Señal del a Sirena, 35 para desactivar la Sirena
 int direccionales = 32;  //PIN GPIO PARA LA ACTIVACION DE LAS DIRECCIONALES
 int ledEstado = 25;   //PIN GPIO PARA EL CONTROL DE LA LLAVE ROJA DEL TABLERO
 int lm2596 = 26;
@@ -225,6 +225,15 @@ class RecibirMensajeBLE : public BLECharacteristicCallbacks {
     if (mensajeRecibido.length() == 5) {
       if (validarClaveDinamica(claveDinamica, mensajeRecibido, clave[1])) {
         Serial.println("Validación Correcta");
+
+        Serial.print("Voltaje de la motocicleta: ");
+        Serial.print(voltajeMotocicleta);
+        Serial.println(" Voltios");
+
+        Serial.print("Voltaje de la Bateria interna: ");
+        Serial.print(voltajeInterno);
+        Serial.println(" Voltios");
+
         if (conexionValida == false) {
           conexionValida = true;
           estadoActual = 2;
@@ -359,13 +368,9 @@ int ciclosdireccionales = 0;
 int ciclossirena = 0;
 
 void loop() {
-  //if (analogRead(15) < 400) {
-  // if (digitalRead(15) == LOW) {
-  //   procesoApagado(1);
-  // }
   if (digitalRead(15) == LOW){
     ciclosapagado ++;
-    if (ciclosapagado >= 30){
+    if (ciclosapagado >= 15){
       procesoApagado(1);
     }
   } else {
@@ -434,13 +439,13 @@ void loop() {
       T_Sirena = 0;
       T = 0;
     }
+  }
 
-    if (conexionValida == true) {
-      if (medirVoltaje(34) >= 13.80) {
-        digitalWrite(ledEstado, LOW);
-      } else {
-        digitalWrite(ledEstado, HIGH);
-      }
+  if (conexionValida == true && procesoEncender == false) {
+    if (medirVoltaje(34) >= 13.20) {
+      digitalWrite(ledEstado, LOW);
+    } else {
+      digitalWrite(ledEstado, HIGH);
     }
   }
 
