@@ -227,11 +227,11 @@ class RecibirMensajeBLE : public BLECharacteristicCallbacks {
         Serial.println("Validación Correcta");
 
         Serial.print("Voltaje de la motocicleta: ");
-        Serial.print(voltajeMotocicleta);
+        Serial.print(medirVoltaje(34));
         Serial.println(" Voltios");
 
         Serial.print("Voltaje de la Bateria interna: ");
-        Serial.print(voltajeInterno);
+        Serial.print(medirVoltaje(13));
         Serial.println(" Voltios");
 
         if (conexionValida == false) {
