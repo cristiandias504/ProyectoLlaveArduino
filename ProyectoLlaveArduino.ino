@@ -172,7 +172,7 @@ void print_wakeup_reason() {
 TaskHandle_t comunicacion;
 
 int principal = 27;  //PIN GPIO PARA EL CONTROL DEL ENCENDIDO COMPLETO DE LA MOTOCICLETA
-int sirena = 4; // 4 Señal del a Sirena, 35 para desactivar la Sirena
+int sirena = 4; // 4 Señal del a Sirena, 21 para desactivar la Sirena
 int direccionales = 32;  //PIN GPIO PARA LA ACTIVACION DE LAS DIRECCIONALES
 int ledEstado = 25;   //PIN GPIO PARA EL CONTROL DE LA LLAVE ROJA DEL TABLERO
 int lm2596 = 26;
