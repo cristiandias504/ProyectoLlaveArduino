@@ -9,6 +9,11 @@
 
 RTC_DATA_ATTR int bootNum = 0;            //VARIABLE PARA LLEVAR EL CONTEO DE LOS BOOT´S HECHOS
 RTC_DATA_ATTR boolean despierto = false;  //VARIABLE PARA EVITAR QUE EL SISTEMA SE DUERMA DE MANERA INFINITA
+RTC_DATA_ATTR int contadorsecundario = 0;
+
+bool LEM = false;
+bool statusLEM = true;
+unsigned long AA = 0;
 
 RTC_DATA_ATTR int varRegistro = 0;
 
@@ -88,6 +93,13 @@ void dormir() {
     bootNum++;  //INCREMENTA CADA VEZ QUE SE DESPIERTA
     Serial.println("numero de boot: " + String(bootNum));
 
+    if (statusLEM == true) {
+      contadorsecundario++;
+      Serial.println("ContadorSecundario: " + String(contadorsecundario));
+    } else {
+      contadorsecundario = 0;
+    }
+
     float voltajeInterno = medirVoltaje(13);
     float voltajeMotocicleta = medirVoltaje(34);
 
@@ -102,11 +114,17 @@ void dormir() {
     int ledEstado = 25;
     pinMode(ledEstado, OUTPUT);
 
-    if (voltajeInterno > 4.05) {
-      digitalWrite(ledEstado, HIGH);
-      delay(300);
-      digitalWrite(ledEstado, LOW);
-    } else if (voltajeInterno > 3.90) {
+    if (voltajeInterno > 3.90) {//4.00) {
+      if (contadorsecundario >= 11 && statusLEM == true) {//300) {//11) {
+        contadorsecundario = 0;
+        LEM = true;
+        AA = millis();
+      } else {
+        digitalWrite(ledEstado, HIGH);
+        delay(300);
+        digitalWrite(ledEstado, LOW);
+      }
+    } else if (voltajeInterno > 3.80) {
       for (int i = 0; i < 2; i++) {
         digitalWrite(ledEstado, HIGH);
         delay(200);
@@ -146,13 +164,14 @@ void dormir() {
     //   preferences.end();
     // }
 
-
+    if (LEM == false) {
     esp_sleep_enable_ext0_wakeup(GPIO_NUM_15, 1);  //DETERMINA EL PIN GPIO RTC QUE DESPERTARA EL SISTEMA, 1 = High, 0 = Low
     Serial.println("..........Modo Deep Sleep..........");
     Serial.flush();
     despierto = true;
     esp_deep_sleep_start();
     Serial.println("...............EL SISTEMA NO ENTRO EN MODO DEEP SLEEP...............");  //SI SE DUERME CORRECTAMENTE ESTA LINEA NO DEBERIA IMPRIMIRSE
+    }
   }
 }
 
@@ -194,6 +213,7 @@ int contadorPaquetesPerdidos = 0;
 bool procesoParpadeo = true;
 bool procesoEncender = false;
 bool procesoAlarma = false;
+bool procesoAlarmaRemoto = false;
 bool estadoMotor = true;
 
 int ArrayA[] = { 6, 2, 5, 1, 4, 9, 8, 7, 3 };  // Desplazar X+Num de la izquierda a la derecha
@@ -254,8 +274,13 @@ class RecibirMensajeBLE : public BLECharacteristicCallbacks {
         }
         EnviarMensajeBLE("301Y");
       } else if (mensajeRecibido == "302") {
-        alarma();
-        EnviarMensajeBLE("302Y");
+        if (LEM == true) {
+          alarma(1);
+          //EnviarMensajeBLE("302YY");
+        } else {
+          alarma(0);
+          EnviarMensajeBLE("302Y");
+        }
       }
     }
   }
@@ -293,6 +318,7 @@ void setup() {
   Serial.println();
   Serial.println("............BIENVENIDO............");
   Serial.println("CONTROL DE ENCENDIDO KTM 390");
+  Serial.println("Version 1.0.0");
 
   pinMode(principal, OUTPUT);
   pinMode(direccionales, OUTPUT);
@@ -321,7 +347,7 @@ void setup() {
     0);
 
   
-  if (digitalRead(15) == LOW){
+  if (digitalRead(15) == LOW && LEM == false){
     int verificacion = 0;
     bool codigo[] = { false, true, true, false, true };
 
@@ -348,7 +374,7 @@ void setup() {
     }
 
     if (verificacion == 5) {
-      Serial.println("Verificación Valida, encendiendo sistema");
+      Serial.println("Verificación Correcta, encendiendo sistema");
       conexionValida = true;
       procesoEncender = true;
     }
@@ -400,18 +426,57 @@ bool estadosirena = true;
 int ciclosapagado = 0;
 int ciclosdireccionales = 0;
 int ciclossirena = 0;
+int ciclosled = 0;
 
 void loop() {
+  if (LEM == false) {
   if (digitalRead(15) == LOW){
     ciclosapagado ++;
     if (ciclosapagado >= 15){
+      contadorsecundario = 0;
       procesoApagado(1);
     }
   } else {
     ciclosapagado = 0;
   }
+  } else {
+    if (digitalRead(15) == HIGH) {
+      procesoAlarmaRemoto = false;
+      T_Sirena = 0;
+      estadosirena = true;
+      LEM = false;
+      AA = 0;
+      if (conexionValida == true){
+        procesoEncender = true;
+      }
+    }
+    if (millis() >= AA + 5000) {
+      if (conexionValida == true) {
+        if (millis() >= T_Led + 5000) {
+          if (estadoled == false) {
+            digitalWrite(ledEstado, HIGH);
+            estadoled = true;
+            T_Led = millis() - 4700;
+          } else {
+            digitalWrite(ledEstado, LOW);
+            estadoled = false;
+            T_Led = millis();
+          }
+        }
+        if(millis() >= AA + 120000){
+          LEM = false;
+          contadorsecundario = 0;
+          dormir();
+        }
+      } else {
+        LEM = false;
+        contadorsecundario = 0;
+        dormir();
+      }
+    }
+  }
 
-  if (procesoParpadeo == true){
+  if (procesoParpadeo == true && LEM == false){
     if (millis() >= T_Led + 150) {
       if (estadoled == false) {
         digitalWrite(ledEstado, HIGH);
@@ -425,61 +490,85 @@ void loop() {
   }
 
   if (procesoEncender == true) {
-    if (millis() >= millis() + T) {
-      Serial.println("Activando Sistema");
-      T = millis();
-      procesoParpadeo = false;
-      digitalWrite(ledEstado, LOW);
+    if (LEM == false) {
+      if (millis() >= millis() + T) {
+        Serial.println("Activando Sistema");
+        T = millis();
+        procesoParpadeo = false;
+        digitalWrite(ledEstado, LOW);
+        digitalWrite(lm2596, HIGH);
+        digitalWrite(principal, HIGH);
+        digitalWrite(sirena, HIGH);
+      }
+
+      if (ciclosdireccionales < 3) {
+        if (millis() >= T + T_direccionales) {
+          if (estadodireccionales == true) {
+            digitalWrite(direccionales, LOW);
+            estadodireccionales = false;
+            ciclosdireccionales += 1;
+          } else {
+            digitalWrite(direccionales, HIGH);
+            estadodireccionales = true;
+          }
+          T_direccionales += 300;
+        }
+      }
+
+      if (ciclossirena <= 2) {
+        if (millis() >= T + T_Sirena) {
+          if (estadosirena == true) {
+            digitalWrite(sirena, LOW);
+            estadosirena = false;
+            ciclossirena += 1;
+          } else {
+            digitalWrite(sirena, HIGH);
+            estadosirena = true;
+          }
+          T_Sirena += 200;
+        }
+      }
+      
+      if (millis() >= T + 2000) {
+        Serial.println("Encendiendo led");
+        digitalWrite(ledEstado, HIGH);
+        procesoEncender = false;
+        ciclosdireccionales = 0;
+        ciclossirena = 0;
+        T_direccionales = 0;
+        T_Sirena = 0;
+        T = 0;
+      }
+    } else {
       digitalWrite(lm2596, HIGH);
-      digitalWrite(principal, HIGH);
-      digitalWrite(sirena, HIGH);
-    }
-
-    if (ciclosdireccionales < 3) {
-      if (millis() >= T + T_direccionales) {
-        if (estadodireccionales == true) {
-          digitalWrite(direccionales, LOW);
-          estadodireccionales = false;
-          ciclosdireccionales += 1;
-        } else {
-          digitalWrite(direccionales, HIGH);
-          estadodireccionales = true;
-        }
-        T_direccionales += 300;
+      for (int i = 0; i < 2; i++) {
+        digitalWrite(direccionales, HIGH);
+        delay(200);
+        digitalWrite(direccionales, LOW);
+        delay(200);
       }
-    }
-
-    if (ciclossirena <= 2) {
-      if (millis() >= T + T_Sirena) {
-        if (estadosirena == true) {
-          digitalWrite(sirena, LOW);
-          estadosirena = false;
-          ciclossirena += 1;
-        } else {
-          digitalWrite(sirena, HIGH);
-          estadosirena = true;
-        }
-        T_Sirena += 200;
-      }
-    }
-    
-    if (millis() >= T + 2000) {
-      Serial.println("Encendiendo led");
-      digitalWrite(ledEstado, HIGH);
       procesoEncender = false;
-      ciclosdireccionales = 0;
-      ciclossirena = 0;
-      T_direccionales = 0;
-      T_Sirena = 0;
-      T = 0;
     }
   }
 
-  if (conexionValida == true && procesoEncender == false) {
-    if (medirVoltaje(34) >= 13.20) {
-      digitalWrite(ledEstado, LOW);
+  if (conexionValida == true && procesoEncender == false && LEM == false) {
+    if (medirVoltaje(34) >= 13.60) {
+      if (millis() >= T_Led + 3000) {
+        if (estadoled == false) {
+          digitalWrite(ledEstado, HIGH);
+          estadoled = true;
+          T_Led = millis() - 2950;
+        } else {
+          digitalWrite(ledEstado, LOW);
+          estadoled = false;
+          T_Led = millis();
+        }
+      }
+      ciclosled = 0;
     } else {
-      digitalWrite(ledEstado, HIGH);
+      if (ciclosled >= 10) {
+        digitalWrite(ledEstado, HIGH);
+      } else ciclosled += 1;
     }
   }
 
@@ -498,6 +587,21 @@ void loop() {
       ESP.restart();
     }
   } else T_Alarma = millis();
+
+  if (procesoAlarmaRemoto == true) {
+    //digitalWrite(sirena, HIGH);
+
+    if (millis() >= T_Sirena + 300) {
+      if (estadosirena == false) {
+        digitalWrite(sirena, HIGH);
+        estadosirena = true;
+      } else {
+        digitalWrite(sirena, LOW);
+        estadosirena = false;
+      }
+      T_Sirena = millis();
+    }
+  }
 
   delay(10);
 }
@@ -719,14 +823,23 @@ void procesoApagado(int tipo) {
     }
   } else if (tipo == 3) {
     Serial.println("Motivo De Apagado: 3 - Desconexión, Perdida de paquetes");
-    alarma();
+     alarma(0);
   }
 }
 
 
-void alarma() {
-  if (procesoAlarma == false) {
-    Serial.println("Iniciando Proceso de Alarma");
-    procesoAlarma = true;
-  } else Serial.println("Alarma Ya Iniciada...");
+void alarma(int Estado) {
+  if (Estado == 0)  {
+    if (procesoAlarma == false) {
+      Serial.println("Iniciando Proceso de Alarma");
+      procesoAlarma = true;
+    } else Serial.println("Alarma Ya Iniciada...");
+  } else if (Estado == 1) {
+    if (procesoAlarmaRemoto == false) {
+      procesoAlarmaRemoto = true;
+    } else {
+      digitalWrite(sirena, LOW);
+      procesoAlarmaRemoto = false;
+    }  
+  } else Serial.println("Valor de Alarma no valido");
 }
