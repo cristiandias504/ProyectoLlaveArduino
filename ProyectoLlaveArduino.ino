@@ -244,7 +244,8 @@ class ServerCallbacks : public BLEServerCallbacks {
     deviceConnected = false;
     Serial.println("❌ Cliente desconectado");
     pServer->startAdvertising();
-    procesoApagado(3);
+    if (LEM == false) procesoApagado(3);
+    else procesoApagado(4);
   }
 };
 
@@ -602,14 +603,14 @@ void loop() {
   } else T_Alarma = millis();
 
   if (procesoAlarmaRemoto == true) {
-    //digitalWrite(sirena, HIGH);
-
     if (millis() >= T_Sirena + 300) {
       if (estadosirena == false) {
         digitalWrite(sirena, HIGH);
+        digitalWrite(direccionales, HIGH);
         estadosirena = true;
       } else {
         digitalWrite(sirena, LOW);
+        digitalWrite(direccionales, LOW);
         estadosirena = false;
       }
       T_Sirena = millis();
@@ -837,6 +838,11 @@ void procesoApagado(int tipo) {
   } else if (tipo == 3) {
     Serial.println("Motivo De Apagado: 3 - Desconexión, Perdida de paquetes");
      alarma(0);
+  } else if (tipo == 4) {
+    Serial.println("Motivo De Apagado: 4 - Desconexión del modo Conexión automatica");
+    LEM = false;
+    contadorsecundario = 721;
+    dormir();
   }
 }
 
@@ -852,6 +858,7 @@ void alarma(int Estado) {
       procesoAlarmaRemoto = true;
     } else {
       digitalWrite(sirena, LOW);
+      digitalWrite(direccionales, LOW);
       procesoAlarmaRemoto = false;
     }  
   } else Serial.println("Valor de Alarma no valido");
