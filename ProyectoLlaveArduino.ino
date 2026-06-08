@@ -9,7 +9,13 @@
 
 RTC_DATA_ATTR int bootNum = 0;            //VARIABLE PARA LLEVAR EL CONTEO DE LOS BOOT´S HECHOS
 RTC_DATA_ATTR boolean despierto = false;  //VARIABLE PARA EVITAR QUE EL SISTEMA SE DUERMA DE MANERA INFINITA
-RTC_DATA_ATTR int contadorsecundario = 0;
+RTC_DATA_ATTR int contadorsecundario = 11;
+
+int principal = 27;  //PIN GPIO PARA EL CONTROL DEL ENCENDIDO COMPLETO DE LA MOTOCICLETA
+int sirena = 4; // 4 Señal del a Sirena, 21 para desactivar la Sirena
+int direccionales = 32;  //PIN GPIO PARA LA ACTIVACION DE LAS DIRECCIONALES
+int ledEstado = 25;   //PIN GPIO PARA EL CONTROL DE LA LLAVE ROJA DEL TABLERO
+int lm2596 = 26;
 
 bool LEM = false;
 bool statusLEM = true;
@@ -62,6 +68,8 @@ float medirVoltaje(int pin) {
 void cargaAuxiliar() {
   pinMode(26, OUTPUT);
   digitalWrite(26, HIGH);
+  unsigned long T_Led = 0;
+  bool estadoled = false;
   Serial.println("Iniciando proceso de carga auxiliar de la bateria interna");
   T_cargaAuxiliar = millis();
   while (1) {
@@ -77,11 +85,23 @@ void cargaAuxiliar() {
       if (voltajeMotocicleta < 12.50) {
         Serial.println("Voltaje de la motocicleta demasiado bajo para continuar con la carga auxiliar");
         break;
-      } else if (voltajeInterno >= 4.00) {
+      } else if (voltajeInterno >= 4.10) {
         Serial.println("Bateria Cargada");
         break;
       } else Serial.println("Continua Cargando...");
     }
+    if (millis() >= T_Led + 1000) {
+      if (estadoled == false) {
+        digitalWrite(ledEstado, HIGH);
+        estadoled = true;
+        T_Led = millis() - 800;
+      } else {
+        digitalWrite(ledEstado, LOW);
+        estadoled = false;
+        T_Led = millis();
+      }
+    }
+    if (digitalRead(15) == HIGH) break;
     delay (10);
   }
   Serial.println("Finalizando proceso de carga auxiliar de la bateria interna");
@@ -94,10 +114,10 @@ void dormir() {
     Serial.println("numero de boot: " + String(bootNum));
 
     if (statusLEM == true) {
-      contadorsecundario++;
+      if (contadorsecundario > 0) contadorsecundario -= 1;
       Serial.println("ContadorSecundario: " + String(contadorsecundario));
     } else {
-      contadorsecundario = 0;
+      contadorsecundario = 11;
     }
 
     float voltajeInterno = medirVoltaje(13);
@@ -114,9 +134,8 @@ void dormir() {
     int ledEstado = 25;
     pinMode(ledEstado, OUTPUT);
 
-    if (voltajeInterno > 3.90) {//4.00) {
-      if (contadorsecundario >= 11 && statusLEM == true) {//300) {//11) {
-        contadorsecundario = 0;
+    if (voltajeInterno > 3.90) {
+      if (contadorsecundario == 0 && statusLEM == true) {
         LEM = true;
         AA = millis();
       } else {
@@ -139,7 +158,7 @@ void dormir() {
         delay(150);
       }
     } else {
-      if (voltajeMotocicleta >= 12.40) {
+      if (voltajeMotocicleta >= 12.50) {
         cargaAuxiliar();
       } else Serial.println("Voltaje de la motocicleta demasiado bajo para carga auxiliar");
     }
@@ -189,12 +208,6 @@ void print_wakeup_reason() {
 }
 
 TaskHandle_t comunicacion;
-
-int principal = 27;  //PIN GPIO PARA EL CONTROL DEL ENCENDIDO COMPLETO DE LA MOTOCICLETA
-int sirena = 4; // 4 Señal del a Sirena, 21 para desactivar la Sirena
-int direccionales = 32;  //PIN GPIO PARA LA ACTIVACION DE LAS DIRECCIONALES
-int ledEstado = 25;   //PIN GPIO PARA EL CONTROL DE LA LLAVE ROJA DEL TABLERO
-int lm2596 = 26;
 
 BLECharacteristic *txCharacteristic;
 bool deviceConnected = false;
@@ -432,8 +445,8 @@ void loop() {
   if (LEM == false) {
   if (digitalRead(15) == LOW){
     ciclosapagado ++;
-    if (ciclosapagado >= 15){
-      contadorsecundario = 0;
+    if (ciclosapagado >= 20){
+      contadorsecundario = 11;
       procesoApagado(1);
     }
   } else {
@@ -465,12 +478,12 @@ void loop() {
         }
         if(millis() >= AA + 120000){
           LEM = false;
-          contadorsecundario = 0;
+          contadorsecundario = 721;
           dormir();
         }
       } else {
         LEM = false;
-        contadorsecundario = 0;
+        contadorsecundario = 11;
         dormir();
       }
     }
