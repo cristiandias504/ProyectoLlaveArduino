@@ -279,14 +279,16 @@ class RecibirMensajeBLE : public BLECharacteristicCallbacks {
       }
     } else if (mensajeRecibido.length() == 3) {
       if (mensajeRecibido == "301") {
-        if (estadoMotor == true){
-          procesoApagado(2);
-          estadoMotor = false;
-        } else {
-          procesoEncender = true;
-          estadoMotor = true;
-        }
-        EnviarMensajeBLE("301Y");
+        if (LEM == false) {
+          if (estadoMotor == true){
+            procesoApagado(2);
+            estadoMotor = false;
+          } else {
+            procesoEncender = true;
+            estadoMotor = true;
+          }
+          EnviarMensajeBLE("301Y");
+        } else {}
       } else if (mensajeRecibido == "302") {
         if (LEM == true) {
           alarma(1);
